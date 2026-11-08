@@ -1,0 +1,8 @@
+# Never publish multi-GB source/raw files or local outputs
+/input/
+/output/
+/logs/
+*.nv12
+*.mp4
+*.zip
+.DS_Store

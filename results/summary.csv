@@ -1,0 +1,4 @@
+source,device,encoder,median_wall_s,throughput_fps,median_process_cpu_pct,ssim_all,representative_bitrate_mbps,runs
+BBB 4K10s RAM,Raspberry Pi 5,libx264,24.64,12.18,327,0.995376,10.21,3
+BBB 4K10s RAM,RK3588,libx264,20.04,14.97,357,0.995378,10.21,3
+BBB 4K10s RAM,RK3588,MPP H264,10.37,28.93,54,0.991389,9.70,3

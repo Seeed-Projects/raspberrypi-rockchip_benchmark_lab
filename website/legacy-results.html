@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RK3588 vs Raspberry Pi 5 | 4K H.264 Encoding Benchmark</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #131a2e;
+      --panel-2: #1a2340;
+      --text: #eef2ff;
+      --muted: #aab3d1;
+      --line: #2a355f;
+      --accent: #6ea8ff;
+      --accent-2: #70e1c8;
+      --accent-3: #ffb86b;
+      --danger: #ff7f96;
+      --good: #7ef0a6;
+      --shadow: 0 10px 30px rgba(0,0,0,.28);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top right, rgba(110,168,255,.18), transparent 28%),
+        radial-gradient(circle at left 30%, rgba(112,225,200,.12), transparent 22%),
+        var(--bg);
+      line-height: 1.5;
+    }
+    .container {
+      width: min(1200px, calc(100% - 48px));
+      margin: 0 auto;
+    }
+    .hero {
+      padding: 56px 0 28px;
+    }
+    .eyebrow {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-size: 13px;
+      color: var(--muted);
+      background: rgba(255,255,255,.03);
+    }
+    h1 {
+      margin: 18px 0 16px;
+      font-size: clamp(36px, 5vw, 56px);
+      line-height: 1.05;
+      letter-spacing: -.02em;
+    }
+    .sub {
+      max-width: 920px;
+      font-size: 18px;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+    .hero-grid, .cards, .method, .summary-grid, .two-col {
+      display: grid;
+      gap: 18px;
+    }
+    .hero-grid { grid-template-columns: 1.4fr .8fr; }
+    .cards { grid-template-columns: repeat(3, 1fr); }
+    .summary-grid { grid-template-columns: repeat(4, 1fr); }
+    .method { grid-template-columns: repeat(3, 1fr); }
+    .two-col { grid-template-columns: 1.1fr .9fr; }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+    .stat {
+      font-size: 13px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 10px;
+    }
+    .value {
+      font-size: clamp(28px, 3vw, 42px);
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+    .desc { color: var(--muted); font-size: 15px; }
+    .section {
+      padding: 18px 0 8px;
+    }
+    .section h2 {
+      font-size: 28px;
+      margin: 0 0 8px;
+    }
+    .section p.lead {
+      color: var(--muted);
+      margin: 0 0 18px;
+      font-size: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 16px;
+      background: rgba(255,255,255,.02);
+      border: 1px solid var(--line);
+    }
+    th, td {
+      padding: 15px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      text-align: left;
+      font-size: 14px;
+      vertical-align: middle;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      background: rgba(255,255,255,.02);
+    }
+    tr:last-child td { border-bottom: none; }
+    .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(110,168,255,.14);
+      color: #cfe0ff;
+      border: 1px solid rgba(110,168,255,.3);
+    }
+    .tag.good { background: rgba(112,225,200,.14); color: #d3fff3; border-color: rgba(112,225,200,.35); }
+    .tag.warn { background: rgba(255,184,107,.14); color: #ffe6c6; border-color: rgba(255,184,107,.35); }
+    .bar-card h3, .note h3, .compare h3 { margin: 0 0 14px; font-size: 20px; }
+    .bar-group { margin: 16px 0 20px; }
+    .bar-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      gap: 12px;
+      font-size: 14px;
+    }
+    .bar-head .label { font-weight: 600; }
+    .bar-head .metric { color: var(--muted); }
+    .track {
+      width: 100%;
+      height: 14px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), #a8c7ff);
+    }
+    .fill.alt { background: linear-gradient(90deg, var(--accent-2), #baf8ea); }
+    .fill.warn { background: linear-gradient(90deg, var(--accent-3), #ffd7ab); }
+    .fill.good { background: linear-gradient(90deg, var(--good), #c8ffdb); }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .kpi {
+      background: rgba(255,255,255,.02);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .kpi .small { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    .kpi .big { font-size: 28px; font-weight: 800; margin: 8px 0 4px; }
+    ul.clean {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+    }
+    .quote {
+      padding: 18px 20px;
+      border-left: 4px solid var(--accent-2);
+      background: rgba(112,225,200,.08);
+      border-radius: 14px;
+      color: #dffdf4;
+      font-size: 17px;
+      margin-top: 14px;
+    }
+    .footer {
+      padding: 28px 0 42px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .muted { color: var(--muted); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    @media (max-width: 960px) {
+      .hero-grid, .cards, .summary-grid, .method, .two-col, .kpis { grid-template-columns: 1fr; }
+      .container { width: min(100% - 28px, 1200px); }
+      h1 { font-size: 38px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container hero">
+    <div class="eyebrow">Same 4K source · 300 frames · H.264 · RAM-based benchmark</div>
+    <div class="hero-grid">
+      <div>
+        <h1>RK3588 vs Raspberry Pi 5<br>4K H.264 Encoding Benchmark</h1>
+        <div class="sub">
+          基于相同的 <strong>Big Buck Bunny 4K</strong> 视频片段、相同的 300 帧输入、相同的 H.264 目标码率设置，比较 <strong>Raspberry Pi 5</strong> 与 <strong>RK3588</strong> 的 CPU 软件编码性能，以及 RK3588 的 <strong>MPP 硬件编码</strong>能力。
+        </div>
+        <div class="quote">
+          Same 4K footage. The difference isn't just CPU speed — it's dedicated hardware acceleration.
+        </div>
+      </div>
+      <div class="card">
+        <div class="stat">Key takeaway</div>
+        <div class="value">2.38×</div>
+        <div class="desc">RK3588 MPP 对比 Pi 5 软件编码的端到端吞吐量提升（按中位数计算）。</div>
+        <div class="kpis">
+          <div class="kpi">
+            <div class="small">Pi 5 CPU</div>
+            <div class="big">12.18</div>
+            <div class="muted">FPS</div>
+          </div>
+          <div class="kpi">
+            <div class="small">RK3588 CPU</div>
+            <div class="big">14.97</div>
+            <div class="muted">FPS</div>
+          </div>
+          <div class="kpi">
+            <div class="small">RK3588 MPP</div>
+            <div class="big">28.93</div>
+            <div class="muted">FPS</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container section">
+    <h2>Executive Summary</h2>
+    <p class="lead">本页适合直接录屏展示。重点不是“谁碾压谁”，而是说明：<strong>RK3588 的 CPU 软件编码略强于 Pi 5，而真正拉开差距的是专用 MPP 硬件编码器。</strong></p>
+    <div class="summary-grid">
+      <div class="card">
+        <div class="stat">Software Encoding</div>
+        <div class="value">+23.0%</div>
+        <div class="desc">RK3588 CPU 软件编码吞吐量相对 Pi 5 提升。</div>
+      </div>
+      <div class="card">
+        <div class="stat">Hardware Acceleration</div>
+        <div class="value">28.93 FPS</div>
+        <div class="desc">RK3588 MPP 的 4K H.264 编码中位吞吐量，接近实时 4K30。</div>
+      </div>
+      <div class="card">
+        <div class="stat">Process CPU Usage</div>
+        <div class="value">54%</div>
+        <div class="desc">RK3588 MPP 测试中位进程 CPU 使用率，明显低于软件编码。</div>
+      </div>
+      <div class="card">
+        <div class="stat">Visual Quality</div>
+        <div class="value">0.991389</div>
+        <div class="desc">RK3588 MPP 的 SSIM All；低于软件编码，但仍保持较高画质。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container section">
+    <h2>Test Setup</h2>
+    <p class="lead">为尽量保证公平性，使用相同视频源、统一时长、统一输入格式，并将原始帧放入内存文件系统读取，避免存储读写瓶颈干扰。</p>
+    <div class="method">
+      <div class="card">
+        <div class="stat">Source</div>
+        <div class="desc">
+          <strong>Big Buck Bunny 4K</strong><br>
+          取 00:01:00 开始的 10 秒片段，转为 <span class="mono">3840×2160 / NV12 / 300 帧</span>。
+        </div>
+      </div>
+      <div class="card">
+        <div class="stat">Input Verification</div>
+        <div class="desc">
+          两台设备生成的原始输入文件一致：<br>
+          <span class="mono">d1e3403d6886a547...381f5fd7</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="stat">Encoding Modes</div>
+        <div class="desc">
+          1) Raspberry Pi 5 - <strong>libx264</strong><br>
+          2) RK3588 - <strong>libx264</strong><br>
+          3) RK3588 - <strong>MPP H.264</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container section two-col">
+    <div class="card bar-card">
+      <h3>4K H.264 Throughput</h3>
+      <div class="bar-group">
+        <div class="bar-head"><span class="label">Raspberry Pi 5 · CPU software</span><span class="metric">12.18 FPS · 24.64s</span></div>
+        <div class="track"><div class="fill" style="width:42.1%"></div></div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-head"><span class="label">RK3588 · CPU software</span><span class="metric">14.97 FPS · 20.04s</span></div>
+        <div class="track"><div class="fill alt" style="width:51.7%"></div></div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-head"><span class="label">RK3588 · MPP hardware</span><span class="metric">28.93 FPS · 10.37s</span></div>
+        <div class="track"><div class="fill good" style="width:99.8%"></div></div>
+      </div>
+      <p class="lead" style="margin-top:8px;margin-bottom:0">以 30 FPS 为实时参考线，RK3588 MPP 接近实时 4K30；CPU 软件编码两者都未达到实时。</p>
+    </div>
+    <div class="card bar-card">
+      <h3>Process CPU Usage</h3>
+      <div class="bar-group">
+        <div class="bar-head"><span class="label">Raspberry Pi 5 · CPU software</span><span class="metric">327%</span></div>
+        <div class="track"><div class="fill warn" style="width:91.3%"></div></div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-head"><span class="label">RK3588 · CPU software</span><span class="metric">357%</span></div>
+        <div class="track"><div class="fill warn" style="width:99.7%"></div></div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-head"><span class="label">RK3588 · MPP hardware</span><span class="metric">54%</span></div>
+        <div class="track"><div class="fill good" style="width:15.1%"></div></div>
+      </div>
+      <p class="lead" style="margin-top:8px;margin-bottom:0">这里展示的是 <strong>进程 CPU 使用率</strong>，不是整机功耗。MPP 明显释放了通用 CPU 资源。</p>
+    </div>
+  </div>
+
+  <div class="container section">
+    <h2>Measured Results</h2>
+    <p class="lead">正式对比使用中位数，避免单次波动影响结论。Pi 5 与 RK3588 的软件编码结果来自三次 RAM 测试；RK3588 的 MPP 结果同样来自三次 RAM 测试。</p>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table>
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Pi 5 · Software</th>
+            <th>RK3588 · Software</th>
+            <th>RK3588 · MPP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Input</td>
+            <td colspan="3">4K / 3840×2160 / 300 frames / NV12 / same SHA-256 verified</td>
+          </tr>
+          <tr>
+            <td>Codec</td>
+            <td>H.264 / libx264</td>
+            <td>H.264 / libx264</td>
+            <td>H.264 / Rockchip MPP</td>
+          </tr>
+          <tr>
+            <td>Total time</td>
+            <td><strong>24.64s</strong></td>
+            <td><strong>20.04s</strong></td>
+            <td><strong>10.37s</strong></td>
+          </tr>
+          <tr>
+            <td>Average throughput</td>
+            <td>12.18 FPS</td>
+            <td>14.97 FPS</td>
+            <td>28.93 FPS</td>
+          </tr>
+          <tr>
+            <td>Process CPU usage</td>
+            <td>327%</td>
+            <td>357%</td>
+            <td>54%</td>
+          </tr>
+          <tr>
+            <td>Output frames</td>
+            <td>300</td>
+            <td>300</td>
+            <td>300</td>
+          </tr>
+          <tr>
+            <td>Measured bitrate</td>
+            <td>≈ 10.21 Mbps</td>
+            <td>≈ 10.21 Mbps</td>
+            <td>≈ 9.70 Mbps</td>
+          </tr>
+          <tr>
+            <td>SSIM All</td>
+            <td>0.995376</td>
+            <td>0.995378</td>
+            <td>0.991389</td>
+          </tr>
+          <tr>
+            <td>Interpretation</td>
+            <td><span class="tag">Reference baseline</span></td>
+            <td><span class="tag">Faster CPU encode</span></td>
+            <td><span class="tag good">Hardware acceleration</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="container section two-col">
+    <div class="card compare">
+      <h3>Quality Comparison</h3>
+      <div class="bar-group">
+        <div class="bar-head"><span class="label">Pi 5 · Software SSIM</span><span class="metric">0.995376</span></div>
+        <div class="track"><div class="fill alt" style="width:99.54%"></div></div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-head"><span class="label">RK3588 · Software SSIM</span><span class="metric">0.995378</span></div>
+        <div class="track"><div class="fill alt" style="width:99.54%"></div></div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-head"><span class="label">RK3588 · MPP SSIM</span><span class="metric">0.991389</span></div>
+        <div class="track"><div class="fill" style="width:99.14%"></div></div>
+      </div>
+      <p class="lead" style="margin-top:8px;margin-bottom:0">MPP 仍然保持较高画质，但其 SSIM 略低于 libx264。由于实际输出码率也更低，因此这里不能视为严格等码率画质对比。</p>
+    </div>
+    <div class="card note">
+      <h3>What this means</h3>
+      <ul class="clean">
+        <li>如果你只看 CPU 软件编码，RK3588 比 Pi 5 更强，但差距并不是数量级。</li>
+        <li>真正改变结果的是 RK3588 的专用 H.264 硬件编码器（MPP）。</li>
+        <li>MPP 在 4K 编码任务上显著降低 CPU 负载，更适合需要同时运行其他 AI / I/O / 应用任务的边缘设备。</li>
+        <li>MPP 的压缩效率与软件编码并不完全等同，画质、码率和吞吐量之间存在权衡。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="container section">
+    <h2>Recommended On-Screen Conclusion</h2>
+    <div class="cards">
+      <div class="card">
+        <div class="stat">Takeaway 01</div>
+        <div class="desc"><strong>Pi 5 vs RK3588 CPU encoding:</strong> RK3588 is faster, but both are far from real-time 4K30 in pure software encoding.</div>
+      </div>
+      <div class="card">
+        <div class="stat">Takeaway 02</div>
+        <div class="desc"><strong>MPP changes the game:</strong> RK3588 nearly reaches real-time 4K30 with much lower CPU overhead.</div>
+      </div>
+      <div class="card">
+        <div class="stat">Takeaway 03</div>
+        <div class="desc"><strong>There is a trade-off:</strong> hardware encoding is faster and lighter, but software encoding remains slightly stronger in compression efficiency.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container footer">
+    <div>Test source: Big Buck Bunny 4K clip · Input from RAM · 300 frames · H.264 target bitrate ≈ 10 Mbps.</div>
+    <div style="margin-top:6px;">Note: CPU percentages shown here are process CPU usage, not total system power consumption. “Near real-time 4K30” is used intentionally because two of the three MPP runs exceeded 10 seconds slightly.</div>
+  </div>
+</body>
+</html>
